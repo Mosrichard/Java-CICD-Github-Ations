@@ -1,0 +1,27 @@
+name: JAVA CICD
+
+on: 
+  push:
+    branches:
+      - main
+
+jobs:
+  compile:
+    runs-on: ubuntu-latest
+
+
+    steps:
+      - name: Checkout the code inside runner
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/set-up-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build with Maven
+        run: mvn compile
+        
+
