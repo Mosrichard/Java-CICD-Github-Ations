@@ -30,7 +30,7 @@ jobs:
       needs: compile
 
       steps:
-        - uses: checkout/actions@v4
+        - uses: actions/checkout@v4
  # Installing Trivy
         - name: Trivy Installation
           run: |
