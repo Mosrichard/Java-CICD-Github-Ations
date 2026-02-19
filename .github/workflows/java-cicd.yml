@@ -8,7 +8,7 @@ on:
 jobs:
 # Code Compile Job No.1
   compile:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
 
     steps:
       - name: Checkout the code inside runner
@@ -26,7 +26,7 @@ jobs:
 
   # Security Check Job No.2
   security-check:
-      runs-on: ubuntu-latest
+      runs-on: self-hosted
       needs: compile
 
       steps:
@@ -52,7 +52,7 @@ jobs:
           run: gitleaks detect source . -r gitleaks-report.json -f json
 # Testing Job No.3
   test:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     needs: security-check
 
     steps:
