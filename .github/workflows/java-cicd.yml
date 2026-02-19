@@ -64,7 +64,7 @@ jobs:
       uses: actions/setup-java@v4
       with:
         java-version: '17'
-        distribution: 'temurian'
+        distribution: 'temurin'
         cache: maven
     # Testing with maven
     - name: Unit Test Cases
