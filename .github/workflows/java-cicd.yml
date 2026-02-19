@@ -1,12 +1,15 @@
 name: JAVA CICD
 
-on: 
+on:
   push:
     branches:
       - main
 
 jobs:
-# Code Compile Job No.1
+
+  # -------------------------
+  # Job 1: Compile
+  # -------------------------
   compile:
     runs-on: self-hosted
 
@@ -24,113 +27,103 @@ jobs:
       - name: Build with Maven
         run: mvn compile
 
-  # Security Check Job No.2
+
+  # -------------------------
+  # Job 2: Security Check
+  # -------------------------
   security-check:
-      runs-on: self-hosted
-      needs: compile
+    runs-on: self-hosted
+    needs: compile
 
-      steps:
-        - name: Checkout the code
-          uses: actions/checkout@v4
- # Installing Trivy
-        - name: Trivy Installation
-          run: |
-            sudo apt-get install -y wget apt-transport-https gnupg lsb-release
-            wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
-            echo deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main | sudo tee -a /etc/apt/sources.list.d/trivy.list
-            sudo apt-get update -y
-            sudo apt-get install -y trivy
-# RUnning TRivy Scan
-        - name: Trivy FS Scan
-          run: trivy fs --format table -o fs-report-json .
-# Installing GitLeaks for checking any secrets are exposed or not
-        - name: Install Git Leaks
-          run: sudo apt install gitleaks -y
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
 
-# Gitleaks Scan
-        - name: Gitleaks Code Scan
-          run: gitleaks detect source . -r gitleaks-report.json -f json
-# Testing Job No.3
+      # Install Trivy
+      - name: Trivy Installation
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y wget apt-transport-https gnupg lsb-release
+          wget -qO - https://aquasecurity.github.io/trivy-repo/deb/public.key | sudo apt-key add -
+          echo "deb https://aquasecurity.github.io/trivy-repo/deb $(lsb_release -sc) main" | sudo tee /etc/apt/sources.list.d/trivy.list
+          sudo apt-get update -y
+          sudo apt-get install -y trivy
+
+      # Run Trivy Scan
+      - name: Trivy FS Scan
+        run: trivy fs --format table -o fs-report.txt .
+
+      # Install Gitleaks
+      - name: Install GitLeaks
+        run: sudo apt-get install -y gitleaks
+
+      # Run Gitleaks Scan
+      - name: Gitleaks Code Scan
+        run: gitleaks detect --source . --report-path gitleaks-report.json --report-format json
+
+
+  # -------------------------
+  # Job 3: Test
+  # -------------------------
   test:
     runs-on: self-hosted
     needs: security-check
 
     steps:
-    # Get Code from github
-    - name: Checkout the code
-      uses: actions/checkout@v4
-    # Install JDK
-    - name: Setup JDK 17
-      uses: actions/setup-java@v4
-      with:
-        java-version: '17'
-        distribution: 'temurin'
-        cache: maven
-    # Testing with maven
-    - name: Unit Test Cases
-      run: mvn test
+      - name: Checkout the code
+        uses: actions/checkout@v4
 
- # Build Sonar Scan
+      - name: Setup JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
 
-   build_project_and_sonar_scan:
-     runs-on: self-hosted
-     needs: test
-     steps:
-    # Checkout the code
-     - name: Checkout the code
-       uses: actions/checkout@v4
-    # Install JDK 17
-     - name: Set up JDK 17
-       uses: actions/setup-java@v4
-       with:
-         java-version: '17'
-         distribution: 'temurin'
-         cache: maven
+      - name: Run Unit Test Cases
+        run: mvn test
 
-    # Build project
-     - name: Build Project
-       run: mvn package
-    # Upload JAR Artifact
-     - name: Upload JAR Artifact
-       uses: actions/upload-artifact@v4
-       with:
-         name: app-jar
-         path: target/*.jar
 
-     - uses: actions/checkout@v4
-       with:
+  # -------------------------
+  # Job 4: Build + Sonar Scan
+  # -------------------------
+  build_project_and_sonar_scan:
+    runs-on: self-hosted
+    needs: test
+
+    steps:
+      - name: Checkout the code
+        uses: actions/checkout@v4
+        with:
           fetch-depth: 0
-     - name: SonarQube Scan
-       uses: SonarSource/sonarqube-scan-action@v5.0.0 
-       env:
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build Project
+        run: mvn package
+
+      - name: Upload JAR Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-jar
+          path: target/*.jar
+
+      - name: SonarQube Scan
+        uses: SonarSource/sonarqube-scan-action@v5.0.0
+        env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
           SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
-        
-     - name: SonarQube Quality Gate check
-       id: sonarqube-quality-gate-check
-       uses: sonarsource/sonarqube-quality-gate-action@master
-       with:
+
+      - name: SonarQube Quality Gate check
+        id: sonarqube-quality-gate-check
+        uses: sonarsource/sonarqube-quality-gate-action@master
+        with:
           pollingTimeoutSec: 600
-       env:
+        env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }} #
-
-
- 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-        
-
-  
+          SONAR_HOST_URL: ${{ vars.SONAR_HOST_URL }}
